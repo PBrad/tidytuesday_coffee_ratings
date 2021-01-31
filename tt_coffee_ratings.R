@@ -4,6 +4,8 @@
 
 library(tidytuesdayR)
 library(dplyr)
+library(ggplot2)
+theme_set(theme_minimal())
 
 # Load --------------------------------------------------------------------
 
@@ -50,4 +52,44 @@ nrow(distinct(df[all_of(coffee_vars)])) # same - 1293
 df <- df %>% 
   mutate(id = row_number()) %>% 
   select(id, everything())
+
+# Explore -----------------------------------------------------------------
+
+# What types of coffee are there?
+count(df, species) # overwhelmingly Arabica
+
+df %>% 
+  count(variety, sort = TRUE) %>% 
+  print(n = 50) # More here - 226 NA's though
+
+df %>% 
+  filter(!is.na(country_of_origin)) %>% 
+  count(country_of_origin) %>% 
+  ggplot(aes(x = reorder(country_of_origin, n), y = n)) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
+
+# What countries are represented?
+df %>% 
+  count(country_of_origin, sort = TRUE) %>% 
+  print(n = 50)
+
+# What are the top varieties for the top producing countries?
+
+df %>% 
+  group_by(country_of_origin, variety) %>% 
+  summarize(n = n()) %>% 
+  mutate(total = sum(n),
+         pct = n / total) %>% 
+  relocate(total, .after = last_col()) %>% 
+  arrange(desc(total), country_of_origin, desc(n))
+
+df %>% 
+  filter(!is.na(country_of_origin)) %>% 
+  count(country_of_origin) %>% 
+  ggplot(aes(x = reorder(country_of_origin, n), y = n)) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
+  
+
 
