@@ -5,7 +5,10 @@
 library(tidytuesdayR)
 library(dplyr)
 library(ggplot2)
-theme_set(theme_minimal())
+library(tidytext) # for reorder_within() when facetting ggplots
+theme_set(theme_minimal() + theme(panel.border = element_blank(),
+                                  panel.grid.major = element_blank(),
+                                  panel.grid.minor = element_blank()))
 
 # Load --------------------------------------------------------------------
 
@@ -62,17 +65,20 @@ df %>%
   count(variety, sort = TRUE) %>% 
   print(n = 50) # More here - 226 NA's though
 
-df %>% 
-  filter(!is.na(country_of_origin)) %>% 
-  count(country_of_origin) %>% 
-  ggplot(aes(x = reorder(country_of_origin, n), y = n)) +
-  geom_bar(stat = 'identity') +
-  coord_flip()
-
 # What countries are represented?
 df %>% 
   count(country_of_origin, sort = TRUE) %>% 
   print(n = 50)
+
+df %>% 
+  filter(!is.na(country_of_origin)) %>% 
+  count(country_of_origin) %>% 
+  ggplot(aes(x = reorder(country_of_origin, n), y = n)) +
+  geom_bar(stat = 'identity', fill = 'dark green') +
+  coord_flip() +
+  xlab("") +
+  ylab("Count") +
+  ggtitle("Coffee Reviews by Country of Origin")
 
 # What are the top varieties for the top producing countries?
 
@@ -84,12 +90,29 @@ df %>%
   relocate(total, .after = last_col()) %>% 
   arrange(desc(total), country_of_origin, desc(n))
 
+top_countries <- df %>% 
+  count(country_of_origin, sort = TRUE) %>% 
+  slice_max(order_by = n, n = 6) %>% 
+  ungroup()
+
+# Need to fix use of reorder_within...not quite right.
 df %>% 
-  filter(!is.na(country_of_origin)) %>% 
-  count(country_of_origin) %>% 
-  ggplot(aes(x = reorder(country_of_origin, n), y = n)) +
+  filter(country_of_origin %in% top_countries$country_of_origin) %>% 
+  filter(!is.na(variety)) %>% 
+  group_by(country_of_origin, variety) %>% 
+  summarize(n = n()) %>% 
+  slice_max(order_by = n, n = 5) %>% # Top 5 types for each country
+  ggplot(aes(x = tidytext::reorder_within(x = variety, within = country_of_origin, n), 
+             y = n,
+             fill = country_of_origin)) +
   geom_bar(stat = 'identity') +
-  coord_flip()
-  
+  coord_flip() +
+  scale_x_reordered() + 
+  facet_wrap(~country_of_origin, scales = 'free_y') +
+  guides(fill = FALSE) + 
+  labs(y = "Number of Coffee Reviews",
+       x = "Variety",
+       title = "What were the most common coffee varieties reviewed in each country?",
+       subtitle = "Top 6 Countries by Total Number of Reviews")
 
-
+ggsave("res/variety_by_country.png")
