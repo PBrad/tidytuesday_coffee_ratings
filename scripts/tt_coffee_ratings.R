@@ -80,6 +80,8 @@ df %>%
   ylab("Count") +
   ggtitle("Coffee Reviews by Country of Origin")
 
+ggsave("res/top_countries.png")
+
 # What are the top varieties for the top producing countries?
 
 df %>% 
